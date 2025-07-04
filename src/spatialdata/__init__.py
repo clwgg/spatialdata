@@ -1,5 +1,15 @@
 from __future__ import annotations
 
+import warnings
+# Ignore a couple of warnings caused by pinning the dask version
+# See also: https://github.com/scverse/spatialdata/issues/860
+warnings.filterwarnings(
+    "ignore", category=FutureWarning, message="The legacy Dask DataFrame implementation is deprecated"
+)
+warnings.filterwarnings(
+    "ignore", category=UserWarning, message="ignoring keyword argument 'read_only'"
+)
+
 import dask
 
 dask.config.set({"dataframe.query-planning": False})
