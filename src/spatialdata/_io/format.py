@@ -246,7 +246,7 @@ TablesFormats = {
     "0.1": TablesFormatV01(),
 }
 RasterFormats = {
-    "0.1": RasterFormatV01(),
+    "0.1": FormatV04(),
     "0.2": RasterFormatV02(),
 }
 SpatialDataContainerFormats = {
