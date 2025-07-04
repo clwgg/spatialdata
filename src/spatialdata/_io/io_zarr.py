@@ -17,6 +17,7 @@ from spatialdata._io.io_raster import _read_multiscale
 from spatialdata._io.io_shapes import _read_shapes
 from spatialdata._io.io_table import _read_table
 from spatialdata._logging import logger
+from spatialdata._core._utils import sanitize_table
 
 
 def _open_zarr_store(store: str | Path | zarr.Group) -> tuple[zarr.Group, str]:
@@ -225,6 +226,10 @@ def read_zarr(
         attrs.pop("spatialdata_attrs")
     else:
         attrs = None
+
+    if tables:
+        for table_name in tables:
+            sanitize_table(tables[table_name])
 
     sdata = SpatialData(
         images=images,
