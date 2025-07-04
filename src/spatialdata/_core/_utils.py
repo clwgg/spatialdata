@@ -95,8 +95,8 @@ def sanitize_table(data: AnnData, inplace: bool = True) -> AnnData | None:
     Sanitize all keys in an AnnData table to comply with SpatialData naming rules.
 
     This function sanitizes all keys in obs, var, obsm, obsp, varm, varp, uns, and layers
-    while maintaining case-insensitive uniqueness. It can either modify the table in-place
-    or return a new sanitized copy.
+    while maintaining case-insensitive uniqueness. Protected columns (instance_key and region_key
+    from spatialdata_attrs) are never renamed.
 
     See a discussion on the naming rules here:
     https://github.com/scverse/spatialdata/discussions/707
@@ -132,6 +132,15 @@ def sanitize_table(data: AnnData, inplace: bool = True) -> AnnData | None:
     # Create a deep copy if not modifying in-place
     sanitized = data if inplace else copy.deepcopy(data)
 
+    # Get protected columns from spatialdata_attrs
+    protected_columns = set()
+    if hasattr(sanitized, 'uns') and 'spatialdata_attrs' in sanitized.uns:
+        spatialdata_attrs = sanitized.uns['spatialdata_attrs']
+        if 'instance_key' in spatialdata_attrs:
+            protected_columns.add(spatialdata_attrs['instance_key'])
+        if 'region_key' in spatialdata_attrs:
+            protected_columns.add(spatialdata_attrs['region_key'])
+
     # Track used names to maintain case-insensitive uniqueness
     used_names_lower: dict[str, set[str]] = defaultdict(set)
 
@@ -152,7 +161,23 @@ def sanitize_table(data: AnnData, inplace: bool = True) -> AnnData | None:
     # Handle obs and var (dataframe columns)
     for attr in ("obs", "var"):
         df = getattr(sanitized, attr)
-        new_columns = {old: get_unique_name(old, attr, is_dataframe_column=True) for old in df.columns}
+
+        # First, add all protected columns to the used names set
+        if attr == "obs":
+            for protected_col in protected_columns:
+                if protected_col in df.columns:
+                    used_names_lower[attr].add(protected_col.lower())
+
+        # Then process all columns
+        new_columns = {}
+        for old_col in df.columns:
+            if attr == "obs" and old_col in protected_columns:
+                # Keep protected columns unchanged
+                new_columns[old_col] = old_col
+            else:
+                # Sanitize non-protected columns
+                new_columns[old_col] = get_unique_name(old_col, attr, is_dataframe_column=True)
+
         df.rename(columns=new_columns, inplace=True)
 
     # Handle other attributes
